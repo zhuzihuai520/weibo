@@ -14,7 +14,7 @@
  */
 
 const WEIBO_API = 'https://api.weibo.com/webim/2/direct_messages/new.json';
-const DEFAULT_UID = '4079769806';
+const DEFAULT_UID = '2671109275';
 // 微博网页版私信接口的固定扩展参数（与原版一致，URLSearchParams 会按同一规则编码）
 const EXTENSIONS = '{"clientid":"3dsmt6xbjdfbulag51gjd8ia91npxk"}';
 
