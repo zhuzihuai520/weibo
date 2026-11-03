@@ -1,0 +1,13 @@
+{
+  "name": "weibo-shortlink-vercel",
+  "version": "1.0.0",
+  "private": true,
+  "description": "微博短链接 t.cn 生成器（Vercel 兼容版，静态前端 + Node.js Serverless 函数）",
+  "scripts": {
+    "dev": "node dev-server.js",
+    "test": "node test/api.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

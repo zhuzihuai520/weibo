@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<meta name="referrer" content="same-origin" />
+	<meta name="author" content="Yuan_Tuo" />
+	<meta name="version" content="1.0.0" />
+	<meta name="description" content="微博短链接生成" />
+	<meta name="keywords" content="微博短链接生成" />
+	<title>微博短链接生成</title>
+	<link rel="icon" href="resource/logo.png" />
+	<link rel="stylesheet" href="static/index.css" />
+	<link rel="stylesheet" href="https://cdn.staticfile.org/twitter-bootstrap/4.1.2/css/bootstrap.min.css" />
+</head>
+
+<body>
+	<nav class="navbar navbar-expand-sm bg-dark navbar-dark">
+		<div class="container">
+			<a class="navbar-brand" href="./"><img src="resource/logo.png" class="img-fluid rounded logo-img mr-2" alt="LOGO" />ShortLink</a>
+			<button class="navbar-toggler border-0" type="button" data-toggle="collapse" data-target="#collpase-bar"><span class="navbar-toggler-icon"></span></button>
+			<div class="collapse navbar-collapse" id="collpase-bar">
+				<ul class="navbar-nav">
+					<li class="nav-item"><a class="nav-link" href="./">首页</a></li>
+					<li class="nav-item"><a class="nav-link" href="#" id="help-link">使用帮助</a></li>
+					<li class="nav-item"><a class="nav-link" href="https://imwcr.cn/" target="_blank">Made by Yuan_Tuo</a></li>
+				</ul>
+			</div>
+		</div>
+	</nav>
+
+	<div class="container">
+		<!-- 结果提示区 -->
+		<div id="result" class="alert d-none" role="alert"></div>
+
+		<!-- 帮助区 -->
+		<div id="help" class="row justify-content-center d-none">
+			<div class="col-md-7 col-sm-8 col-11">
+				<div class="alert alert-primary" role="alert">
+					<h5 class="alert-heading">提示</h5>
+					<hr />
+					<div class="page-inner">
+						<section class="normal" id="section-">
+							<ol>
+								<li>本项目仅以学习为目的，不得用于其他用途。</li>
+								<li>本项目通过微博网页版私信功能生成t.cn短链接。</li>
+								<li><a href="https://github.com/yuantuo666/WeiBoShortLink" target="_blank">Github仓库</a></li>
+								<li><a href="https://imwcr.cn/" target="_blank">Made by Yuan_Tuo</a></li>
+							</ol>
+						</section>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- 输入卡片 -->
+		<div id="input-card" class="col-lg-6 col-md-9 mx-auto mb-5 input-card">
+			<div class="card">
+				<div class="card-header bg-dark text-light">微博短链接生成</div>
+				<div class="card-body">
+					<form name="form1" id="form1" method="post">
+						<div class="form-group my-2">
+							<input type="text" class="form-control" name="url" id="url" placeholder="请输入长链接(含http://)" />
+						</div>
+						<button type="submit" class="mt-4 mb-3 form-control btn btn-success btn-block">生成</button>
+					</form>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<script>
+		var form = document.getElementById('form1');
+		var urlInput = document.getElementById('url');
+		var resultBox = document.getElementById('result');
+		var helpBox = document.getElementById('help');
+		var inputCard = document.getElementById('input-card');
+
+		// 使用帮助：切换帮助区与输入卡片
+		document.getElementById('help-link').addEventListener('click', function (e) {
+			e.preventDefault();
+			var show = helpBox.classList.toggle('d-none');
+			inputCard.classList.toggle('d-none', show);
+			resultBox.classList.add('d-none');
+		});
+
+		// 展示结果（link 存在时以安全方式渲染短链接，避免注入）
+		function showResult(ok, title, text, link) {
+			resultBox.classList.remove('d-none');
+			resultBox.classList.toggle('alert-success', ok);
+			resultBox.classList.toggle('alert-danger', !ok);
+			resultBox.innerHTML = '<h5 class="alert-heading"></h5><hr /><p class="card-text"></p>';
+			resultBox.querySelector('.alert-heading').textContent = title;
+			var p = resultBox.querySelector('.card-text');
+			if (link) {
+				p.appendChild(document.createTextNode('生成的短链接：'));
+				var a = document.createElement('a');
+				a.href = link;
+				a.target = '_blank';
+				a.rel = 'noopener';
+				a.textContent = link;
+				p.appendChild(a);
+			} else {
+				p.textContent = text || '';
+			}
+		}
+
+		form.addEventListener('submit', async function (e) {
+			e.preventDefault();
+			var url = urlInput.value.trim();
+			if (!url) {
+				showResult(false, '提示', '请输入链接。');
+				return;
+			}
+			if (!/^https?:\/\//i.test(url)) {
+				showResult(false, '获取错误', '请输入以 http:// 或 https:// 开头的完整链接。');
+				return;
+			}
+			var btn = form.querySelector('button[type=submit]');
+			btn.disabled = true;
+			btn.textContent = '生成中…';
+			try {
+				var res = await fetch('/api/generate', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ url: url })
+				});
+				var data = await res.json().catch(function () { return null; });
+				if (data && data.ok && data.url_short) {
+					showResult(true, '获取短链接成功', null, data.url_short);
+				} else {
+					showResult(false, '获取错误', (data && data.message) || '未知错误');
+				}
+			} catch (err) {
+				showResult(false, '获取错误', '请求失败：' + err.message);
+			} finally {
+				btn.disabled = false;
+				btn.textContent = '生成';
+			}
+		});
+	</script>
+</body>
+</html>
