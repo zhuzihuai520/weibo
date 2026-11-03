@@ -84,7 +84,16 @@ async function run(name, req, fetchImpl, env) {
   r = await run('bad-response', { method: 'POST', headers: { 'content-type': 'application/json' }, body: { url: 'https://example.com' } }, mockFetch(async () => ({ json: async () => { throw new Error('bad json'); } })), { SUB: 'test_sub', UID: '' });
   ok(r.body.error, 'WEIBO_BAD_RESPONSE', '无法解析的响应应返回 WEIBO_BAD_RESPONSE');
 
-  console.log('微博请求触发次数（应为 3：success/expired/bad-response）：', calls);
+  // 7. 非 21301 的其他错误码 → WEIBO_API_ERROR，透传 code
+  r = await run('api-error', { method: 'POST', headers: { 'content-type': 'application/json' }, body: { url: 'https://example.com' } }, mockFetch(async () => ({ json: async () => ({ error_code: 21327, error: 'login expired' }) })), { SUB: 'test_sub', UID: '' });
+  ok(r.body.error, 'WEIBO_API_ERROR', '非 21301 错误码应返回 WEIBO_API_ERROR');
+  ok(r.body.code, 21327, '应透传错误码 21327');
+
+  // 8. 结构不匹配（如 result=false）→ WEIBO_UNKNOWN，message 含原始返回
+  r = await run('unknown-shape', { method: 'POST', headers: { 'content-type': 'application/json' }, body: { url: 'https://example.com' } }, mockFetch(async () => ({ json: async () => ({ url_objects: [{ info: { result: false } }] }) })), { SUB: 'test_sub', UID: '' });
+  ok(r.body.error, 'WEIBO_UNKNOWN', 'result=false 应返回 WEIBO_UNKNOWN');
+
+  console.log('微博请求触发次数（应为 5：success/expired/bad-response/api-error/unknown-shape）：', calls);
   console.log(failures === 0 ? '\n全部测试通过 ✔' : `\n${failures} 项测试失败 ✘`);
   process.exitCode = failures === 0 ? 0 : 1;
 })();

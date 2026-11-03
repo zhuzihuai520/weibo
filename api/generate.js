@@ -77,16 +77,27 @@ module.exports = async function handler(req, res) {
       });
     }
 
+    // 其他带错误码的返回（如 21327 会话失效、账号受限等），把 code 透传给前端方便定位
+    if (typeof json.error_code === 'number') {
+      return res.status(200).json({
+        ok: false,
+        error: 'WEIBO_API_ERROR',
+        code: json.error_code,
+        message: '微博接口返回错误（code ' + json.error_code + '）：' + (json.error || '无错误描述') + '。建议核对 SUB 抓取站点、UID 是否与 SUB 所属账号一致。',
+      });
+    }
+
     const info = json.url_objects && json.url_objects[0] && json.url_objects[0].info;
     if (info && info.result === true && info.url_short) {
       return res.status(200).json({ ok: true, url_short: info.url_short, message: '生成成功' });
     }
 
-    // 其他未知错误，原样回传微博返回内容便于排查
+    // 其他未知错误，把原始返回放进 message，页面可直接看到便于排查
+    const detail = JSON.stringify(json).slice(0, 800);
     return res.status(502).json({
       ok: false,
       error: 'WEIBO_UNKNOWN',
-      message: '微博接口返回未知错误，请将下方 detail 提交到原项目 issues 排查。',
+      message: '微博接口返回未知结构。原始返回：' + detail,
       detail: json,
     });
   } catch (e) {
