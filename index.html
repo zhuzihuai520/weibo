@@ -11,7 +11,7 @@
 	<title>微博短链接生成</title>
 	<link rel="icon" href="resource/logo.png" />
 	<link rel="stylesheet" href="static/index.css" />
-	<link rel="stylesheet" href="https://cdn.staticfile.org/twitter-bootstrap/4.1.2/css/bootstrap.min.css" />
+	<link rel="stylesheet" href="static/bootstrap.min.css" />
 </head>
 
 <body>
@@ -84,8 +84,43 @@
 			resultBox.classList.add('d-none');
 		});
 
-		// 展示结果（link 存在时以安全方式渲染短链接，避免注入）
-		function showResult(ok, title, text, link) {
+		// 复制文本到剪贴板（优先 Clipboard API，失败时降级 execCommand）
+		function copyText(text, btn) {
+			var done = function () {
+				var old = btn.textContent;
+				btn.textContent = '已复制';
+				btn.classList.remove('btn-outline-success');
+				btn.classList.add('btn-success');
+				setTimeout(function () {
+					btn.textContent = old;
+					btn.classList.add('btn-outline-success');
+					btn.classList.remove('btn-success');
+				}, 2000);
+			};
+			var fallback = function () {
+				var ta = document.createElement('textarea');
+				ta.value = text;
+				ta.style.position = 'fixed';
+				ta.style.opacity = '0';
+				document.body.appendChild(ta);
+				ta.select();
+				try {
+					document.execCommand('copy');
+					done();
+				} catch (e) {
+					btn.textContent = '复制失败';
+				}
+				document.body.removeChild(ta);
+			};
+			if (navigator.clipboard && window.isSecureContext) {
+				navigator.clipboard.writeText(text).then(done).catch(fallback);
+			} else {
+				fallback();
+			}
+		}
+
+		// 展示结果（link 存在时以安全方式渲染短链接，避免注入；autoCopy=true 时自动复制）
+		function showResult(ok, title, text, link, autoCopy) {
 			resultBox.classList.remove('d-none');
 			resultBox.classList.toggle('alert-success', ok);
 			resultBox.classList.toggle('alert-danger', !ok);
@@ -100,6 +135,15 @@
 				a.rel = 'noopener';
 				a.textContent = link;
 				p.appendChild(a);
+				var btn = document.createElement('button');
+				btn.type = 'button';
+				btn.className = 'btn btn-sm btn-outline-success ml-2';
+				btn.textContent = '复制';
+				btn.addEventListener('click', function () { copyText(link, btn); });
+				p.appendChild(btn);
+				if (autoCopy) {
+					btn.click();
+				}
 			} else {
 				p.textContent = text || '';
 			}
@@ -127,7 +171,7 @@
 				});
 				var data = await res.json().catch(function () { return null; });
 				if (data && data.ok && data.url_short) {
-					showResult(true, '获取短链接成功', null, data.url_short);
+					showResult(true, '获取短链接成功，已自动复制', null, data.url_short, true);
 				} else {
 					showResult(false, '获取错误', (data && data.message) || '未知错误');
 				}
